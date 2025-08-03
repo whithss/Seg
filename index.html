@@ -87,21 +87,24 @@ function renderExibicaoDados() {
   let anterior = null;
   let totalGanhos = 0;
 
-  horas.forEach(h => {
-    const atual = dataAtual[h];
-    if (atual?.seguidores > 0) {
-      let diferenca = "";
-      if (anterior !== null && atual?.seguidores !== undefined && anterior?.seguidores !== undefined) {
-        const ganho = atual.seguidores - anterior.seguidores;
-        if (ganho > 0) {
-          diferenca = ` <span class="text-green-400">⬆️ +${ganho}</span>`;
-          totalGanhos += ganho;
+  Object.keys(dataAtual)
+    .map(h => parseInt(h))
+    .sort((a, b) => a - b)
+    .forEach(h => {
+      const atual = dataAtual[h];
+      if (atual?.seguidores > 0) {
+        let diferenca = "";
+        if (anterior !== null && atual?.seguidores !== undefined && anterior?.seguidores !== undefined) {
+          const ganho = atual.seguidores - anterior.seguidores;
+          if (ganho > 0) {
+            diferenca = ` <span class="text-green-400">⬆️ +${ganho}</span>`;
+            totalGanhos += ganho;
+          }
         }
+        texto += `${String(h).padStart(2, '0')}h - ${atual.seguidores} seguidores${diferenca}\n`;
+        anterior = atual;
       }
-      texto += `${String(h).padStart(2, '0')}h - ${atual.seguidores} seguidores${diferenca}\n`;
-      anterior = atual;
-    }
-  });
+    });
 
   if (totalGanhos > 0) {
     texto += `-----------------------------\n<span class="text-green-400 font-bold">Você ganhou: +${totalGanhos} seguidores nesse dia</span>\n`;
@@ -115,20 +118,23 @@ function exportTxt() {
   let txt = `📅 ${datePicker.value}\n-----------------------------\n`;
   let anterior = null;
 
-  horas.forEach(h => {
-    const atual = data1[h];
-    if (atual?.seguidores > 0) {
-      let diferenca = "";
-      if (anterior !== null && atual?.seguidores !== undefined && anterior?.seguidores !== undefined) {
-        const ganho = atual.seguidores - anterior.seguidores;
-        if (ganho > 0) {
-          diferenca = ` ⬆️ +${ganho}`;
+  Object.keys(data1)
+    .map(h => parseInt(h))
+    .sort((a, b) => a - b)
+    .forEach(h => {
+      const atual = data1[h];
+      if (atual?.seguidores > 0) {
+        let diferenca = "";
+        if (anterior !== null && atual?.seguidores !== undefined && anterior?.seguidores !== undefined) {
+          const ganho = atual.seguidores - anterior.seguidores;
+          if (ganho > 0) {
+            diferenca = ` ⬆️ +${ganho}`;
+          }
         }
+        txt += `${String(h).padStart(2, '0')}h - ${atual.seguidores} seguidores${diferenca}\n`;
+        anterior = atual;
       }
-      txt += `${String(h).padStart(2, '0')}h - ${atual.seguidores} seguidores${diferenca}\n`;
-      anterior = atual;
-    }
-  });
+    });
 
   const blob = new Blob([txt], { type: "text/plain" });
   const a = document.createElement("a");
@@ -167,4 +173,4 @@ renderInputs();
 </script>
 
 </body>
-  </html>
+</html>
