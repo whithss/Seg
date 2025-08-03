@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>    
+  <meta charset="UTF-8" />    
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />    
+  <title>Painel de Seguidores por Horário</title>    
+  <script src="https://cdn.tailwindcss.com"></script>    
+</head>    
+<body class="bg-zinc-900 text-white min-h-screen p-4">    
+  <div class="max-w-4xl mx-auto">    
+    <h1 class="text-3xl font-bold text-center mb-6">PAINEL REIS</h1>    
+
+    <div class="mb-6">    
+      <label for="datePicker" class="block text-sm font-semibold mb-2">📅 Data atual</label>    
+      <input type="date" id="datePicker" class="w-full p-2 rounded bg-zinc-800 text-white">    
+    </div>    
+
+    <div class="mb-4">    
+      <label for="horaSelect" class="block text-sm font-semibold">🕒 Selecione o horário</label>    
+      <select id="horaSelect" onchange="renderInputs()" class="w-full p-2 rounded bg-zinc-800 text-white"></select>    
+    </div>    
+
+    <div id="inputs" class="flex justify-center mb-6"></div>    
+
+    <div class="flex flex-wrap gap-2 mb-6">    
+      <button onclick="exportTxt()" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-500">TXT</button>    
+      <button onclick="exportJson()" class="bg-green-600 px-4 py-2 rounded hover:bg-green-500">JSON OUT</button>    
+      <input type="file" id="importFile" accept=".json" onchange="importJson(event)" class="hidden">    
+      <button onclick="document.getElementById('importFile').click()" class="bg-yellow-600 px-4 py-2 rounded hover:bg-yellow-500">JSON IN</button>    
+    </div>    
+
+    <div id="dadosExibidos" class="bg-zinc-800 p-4 rounded text-sm whitespace-pre-wrap"></div>
+  </div>    
+
+<script>    
+const horas = Array.from({length: 24}, (_, i) => i);    
+const datePicker = document.getElementById("datePicker");    
+const horaSelect = document.getElementById("horaSelect");    
+const inputsDiv = document.getElementById("inputs");    
+const dadosDiv = document.getElementById("dadosExibidos");    
+const today = new Date().toISOString().split("T")[0];    
+datePicker.value = today;    
+
+let dados = JSON.parse(localStorage.getItem("seguidoresData") || "{}");    
+
+horaSelect.innerHTML = horas.map(i => `<option value="${i}">${String(i).padStart(2, '0')}h</option>`).join('');
+
+function renderInputs() {
+  inputsDiv.innerHTML = "";
+  const h = parseInt(horaSelect.value);
+  const valor = dados[datePicker.value]?.[h]?.seguidores || "";
+  const videos = dados[datePicker.value]?.[h]?.videos || "";
+  inputsDiv.innerHTML = `
+    <div class="bg-zinc-800 p-4 rounded w-full max-w-xs">
+      <label class="block text-sm font-semibold text-center mb-2">${String(h).padStart(2, '0')}h</label>
+      <input type="number" placeholder="Seguidores" id="seguidoresInput" value="${valor}"
+        class="w-full p-2 mb-2 rounded bg-zinc-900 text-white" />
+      <input type="number" placeholder="Vídeos" id="videosInput" value="${videos}"
+        class="w-full p-2 mb-2 rounded bg-zinc-900 text-white" />
+      ${h == 23 ? '<p class="text-xs mt-1 text-yellow-400 text-center">+7 vídeos de teste</p>' : ""}
+    </div>
+  `;
+  renderExibicaoDados(); 
+}
+
+function saveInputs() {
+  const h = parseInt(horaSelect.value);
+  const seguidores = parseInt(document.getElementById("seguidoresInput")?.value || 0);
+  const videos = parseInt(document.getElementById("videosInput")?.value || 0);
+  const data = datePicker.value;
+
+  if (!dados[data]) dados[data] = {};
+  if (!dados[data][h]) dados[data][h] = {seguidores: 0, videos: 0};
+
+  dados[data][h].seguidores = seguidores;
+  dados[data][h].videos = videos;
+
+  localStorage.setItem("seguidoresData", JSON.stringify(dados));
+  renderExibicaoDados();
+}
+
+setInterval(saveInputs, 1000);
+
+function renderExibicaoDados() {
+  const dataAtual = dados[datePicker.value] || {};
+  let texto = `📅 ${datePicker.value}\n-----------------------------\n`;
+  let anterior = null;
+  let totalGanhos = 0;
+
+  horas.forEach(h => {
+    const atual = dataAtual[h];
+    if (atual?.seguidores > 0) {
+      let diferenca = "";
+      if (anterior !== null && atual?.seguidores !== undefined && anterior?.seguidores !== undefined) {
+        const ganho = atual.seguidores - anterior.seguidores;
+        if (ganho > 0) {
+          diferenca = ` <span class="text-green-400">⬆️ +${ganho}</span>`;
+          totalGanhos += ganho;
+        }
+      }
+      texto += `${String(h).padStart(2, '0')}h - ${atual.seguidores} seguidores${diferenca}\n`;
+      anterior = atual;
+    }
+  });
+
+  if (totalGanhos > 0) {
+    texto += `-----------------------------\n<span class="text-green-400 font-bold">Você ganhou: +${totalGanhos} seguidores nesse dia</span>\n`;
+  }
+
+  dadosDiv.innerHTML = texto;
+}
+
+function exportTxt() {
+  const data1 = dados[datePicker.value] || {};
+  let txt = `📅 ${datePicker.value}\n-----------------------------\n`;
+  let anterior = null;
+
+  horas.forEach(h => {
+    const atual = data1[h];
+    if (atual?.seguidores > 0) {
+      let diferenca = "";
+      if (anterior !== null && atual?.seguidores !== undefined && anterior?.seguidores !== undefined) {
+        const ganho = atual.seguidores - anterior.seguidores;
+        if (ganho > 0) {
+          diferenca = ` ⬆️ +${ganho}`;
+        }
+      }
+      txt += `${String(h).padStart(2, '0')}h - ${atual.seguidores} seguidores${diferenca}\n`;
+      anterior = atual;
+    }
+  });
+
+  const blob = new Blob([txt], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `seguidores_${datePicker.value}.txt`;
+  a.click();
+}
+
+function exportJson() {
+  const blob = new Blob([JSON.stringify(dados)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "dados_backup.json";
+  a.click();
+}
+
+function importJson(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      dados = JSON.parse(e.target.result);
+      localStorage.setItem("seguidoresData", JSON.stringify(dados));
+      renderInputs();
+    } catch (err) {
+      alert("Erro ao importar JSON");
+    }
+  };
+  reader.readAsText(file);
+}
+
+datePicker.addEventListener("change", renderExibicaoDados);
+
+renderInputs();
+</script>
+
+</body>
+  </html>
